@@ -1,38 +1,23 @@
-import { useState, useEffect } from 'react'
-import { Bell, Check, Filter, ChevronRight } from 'lucide-react'
-import Card, { CardHeader, CardBody } from '../components/Card'
-import Button from '../components/Button'
-import { useApi, useMutation } from '../hooks/useApi'
-import { getNotifications, markNotificationRead, markAllNotificationsRead, getSites } from '../utils/api'
+import { useState } from 'react'
+import { Bell, Filter } from 'lucide-react'
+import Card, { CardBody } from '../components/Card'
+import { useApi } from '../hooks/useApi'
+import { getNotifications, getSites } from '../utils/api'
 
 export default function Notifications() {
-  const [filter, setFilter] = useState('all')
   const [selectedSite, setSelectedSite] = useState('all')
   
   const { data: sitesData } = useApi(getSites, [])
-  const { data: notificationsData, loading, error, refetch } = useApi(
+  const { data: notificationsData, loading, error } = useApi(
     () => getNotifications({ 
-      read: filter === 'unread' ? false : undefined,
       siteId: selectedSite !== 'all' ? selectedSite : undefined
     }), 
-    [filter, selectedSite]
+    [selectedSite]
   )
-  const { mutate: markRead } = useMutation(markNotificationRead)
-  const { mutate: markAllRead } = useMutation(markAllNotificationsRead)
 
   // Extract arrays from response
   const sites = sitesData?.sites || []
   const notifications = notificationsData?.notifications || []
-
-  const handleMarkRead = async (notificationId) => {
-    await markRead(notificationId)
-    refetch()
-  }
-
-  const handleMarkAllRead = async () => {
-    await markAllRead(selectedSite !== 'all' ? selectedSite : null)
-    refetch()
-  }
 
   const siteOptions = ['all', ...(sites?.map(s => s.site_id) || [])]
 
@@ -50,14 +35,31 @@ export default function Notifications() {
     error: 'bg-red-500/10 text-red-500',
   }
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
+  const formatDate = (isoString) => {
+    if (!isoString) return ''
+
+    // Some backends emit naive ISO strings (no timezone). Those are UTC
+    // timestamps in this app. Browsers may interpret naive ISO as local time,
+    // which causes incorrect offsets. Append 'Z' when there's no timezone
+    // designator so Date parses it as UTC.
+    let s = String(isoString)
+    if (!/[zZ]|[+\-]\d{2}:?\d{2}$/.test(s)) {
+      s = s + 'Z'
+    }
+
+    let date = new Date(s)
     const now = new Date()
-    const diffMs = now - date
+    let diffMs = now - date
+
+    // If parsing produced a future date (negative diff), clamp to 0 so we
+    // don't display things like "-297m ago" or incorrectly show "Just now"
+    if (diffMs < 0) diffMs = 0
+
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
 
+    if (diffMins < 1) return 'Just now'
     if (diffMins < 60) return `${diffMins}m ago`
     if (diffHours < 24) return `${diffHours}h ago`
     if (diffDays < 7) return `${diffDays}d ago`
@@ -78,30 +80,10 @@ export default function Notifications() {
         <CardBody className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-text-white/60" />
-            <span className="text-sm text-text-white/60">Filter:</span>
-          </div>
-          
-          <div className="flex gap-2">
-            {['all', 'unread'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`
-                  px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                  ${filter === f
-                    ? 'bg-nolo-green text-white'
-                    : 'bg-dark-bg text-text-white/70 hover:text-text-white hover:bg-dark-bg/70'
-                  }
-                `}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
+            <span className="text-sm text-text-white/60">Filter by site:</span>
           </div>
 
-          <div className="h-6 w-px bg-border-gray" />
-
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {siteOptions.map(site => (
               <button
                 key={site}
@@ -117,12 +99,6 @@ export default function Notifications() {
                 {site}
               </button>
             ))}
-          </div>
-
-          <div className="ml-auto">
-            <Button variant="outline" size="sm" onClick={handleMarkAllRead}>
-              Mark All Read
-            </Button>
           </div>
         </CardBody>
       </Card>
@@ -150,68 +126,73 @@ export default function Notifications() {
             </CardBody>
           </Card>
           ) : (
-            notifications.map(notification => {
-              const site = sites?.find(s => s.site_id === notification.site_id)
-              return (
-                <Card 
-                  key={notification.id}
-                  className={`
-                    border-l-4 ${typeColors[notification.type]}
-                    ${!notification.is_read ? 'bg-dark-surface' : 'bg-dark-surface/50'}
-                  `}
-                >
-                  <CardBody className="flex items-start gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {!notification.is_read && (
-                              <div className="h-2 w-2 rounded-full bg-nolo-green" />
-                            )}
-                            <h3 className="font-semibold text-text-white">
-                              {notification.title}
-                            </h3>
-                          </div>
-                          <p className="text-text-white/70">{notification.message}</p>
-                        </div>
-                        
-                        <div className="flex flex-col items-end gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${typeBadges[notification.type]}`}>
-                            {notification.type}
-                          </span>
-                          <span className="text-xs text-text-white/50">
-                            {formatDate(notification.created_at)}
-                          </span>
-                        </div>
+            notifications.map(notification => (
+              <Card 
+                key={notification.id}
+                className={`border-l-4 ${typeColors[notification.type]}`}
+              >
+                <CardBody className="flex items-start gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-text-white text-lg mb-1">
+                          {notification.title}
+                        </h3>
+                        <p className="text-text-white/70">{notification.message}</p>
                       </div>
-
-                      <div className="flex items-center gap-4 text-xs text-text-white/50">
-                        <span className="flex items-center gap-1">
-                          <span className="font-medium text-electric-cyan">{site?.name || notification.site_id}</span>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${typeBadges[notification.type]}`}>
+                          {notification.type}
                         </span>
-                        <span>•</span>
-                        <div className="flex items-center gap-2">
-                          {notification.channels_sent && Object.entries(notification.channels_sent).map(([channel, sent]) => 
-                            sent && (
-                              <span key={channel} className="flex items-center gap-1">
-                                <Check className="h-3 w-3 text-nolo-green" />
-                                {channel}
-                              </span>
-                            )
-                          )}
-                        </div>
+                        <span className="text-xs text-text-white/50">
+                          {formatDate(notification.created_at)}
+                        </span>
                       </div>
                     </div>
 
-                    {!notification.is_read && (
-                      <Button variant="ghost" size="sm" onClick={() => handleMarkRead(notification.id)}>
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </CardBody>
-                </Card>
-              )
-            })
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-white/50">Site:</span>
+                        <span className="font-medium text-electric-cyan">
+                          {notification.site_name}
+                        </span>
+                      </div>
+                      
+                      {notification.category && (
+                        <>
+                          <span className="text-text-white/30">•</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-text-white/50">Category:</span>
+                            <span className="font-medium text-nolo-green">
+                              {notification.category}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                      
+                      {notification.channels && Object.entries(notification.channels).some(([_, sent]) => sent) && (
+                        <>
+                          <span className="text-text-white/30">•</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-text-white/50">Sent via:</span>
+                            <div className="flex gap-2">
+                              {Object.entries(notification.channels).map(([channel, sent]) => 
+                                sent && (
+                                  <span key={channel} className="px-2 py-0.5 bg-dark-bg rounded text-xs text-text-white/70">
+                                    {channel.replace('_', ' ')}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </CardBody>
+              </Card>
+            ))
           )}
         </div>
       )}
