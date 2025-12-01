@@ -19,6 +19,7 @@ instance/
 # Logs
 logs/
 *.log
+logs.txt
 
 # Process IDs
 *.pid
