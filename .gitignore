@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Flask
+instance/
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Process IDs
+*.pid
+
+# Development
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+dist/
+.cache/
+
+# Build outputs
+build/
+*.egg-info/
+
+# Keys and secrets
+*.pem
+vapid_keys.txt
+private_key.pem
+public_key.pem
+
+# Backups
+*.bak
+backup-*.db
+
+# Coverage
+.coverage
+htmlcov/
