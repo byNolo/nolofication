@@ -4,6 +4,7 @@ from sqlalchemy import func, desc
 from app import db
 from app.models import Site, Notification, User, SiteNotificationCategory
 from app.utils.auth import require_admin_auth
+from app.services.notification_service import NotificationService
 
 bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -351,4 +352,72 @@ def list_users(user):
             'created_at': u.created_at.isoformat()
         } for u in users]
     }), 200
+
+
+@bp.route('/broadcast', methods=['POST'])
+@require_admin_auth
+def broadcast(user):
+    """Broadcast a notification to all users (admin only).
+
+    Body JSON:
+    - title (required)
+    - message (required)
+    - type (optional, default 'info')
+    - html_message (optional)
+    """
+    data = request.get_json() or {}
+
+    title = data.get('title')
+    message = data.get('message')
+    notification_type = data.get('type', 'info')
+    html_message = data.get('html_message')
+
+    if not title or not message:
+        return jsonify({'error': 'Missing title or message'}), 400
+
+    # Ensure a site exists to attribute the broadcast to
+    admin_site = Site.query.filter_by(site_id='nolofication-admin').first()
+    if not admin_site:
+        admin_site = Site(
+            site_id='nolofication-admin',
+            name='Nolofication (Admin Broadcast)',
+            description='Internal admin broadcast site',
+            api_key=Site.generate_api_key(),
+            is_active=True,
+            is_approved=True,
+            creator_keyn_id=user.keyn_user_id
+        )
+        db.session.add(admin_site)
+        db.session.commit()
+
+    # Optional targeting
+    target = data.get('target', 'all')  # 'all' or 'site_users'
+    target_site_id = data.get('site_id')
+
+    user_ids = []
+
+    if target == 'site_users' and target_site_id:
+        target_site = Site.query.filter_by(site_id=target_site_id).first()
+        if not target_site:
+            return jsonify({'error': 'Target site not found'}), 404
+
+        # Users with explicit site preferences for that site
+        from app.models import SitePreference
+        prefs = SitePreference.query.filter_by(site_id=target_site.id).all()
+        user_ids = [User.query.get(p.user_id).keyn_user_id for p in prefs if User.query.get(p.user_id)]
+    else:
+        # Default: all users
+        user_ids = [u.keyn_user_id for u in User.query.with_entities(User.keyn_user_id).all()]
+
+    # If no users, return early
+    if not user_ids:
+        return jsonify({'message': 'No users to send to'}), 200
+
+    # Use NotificationService to send in bulk
+    results = NotificationService.send_bulk_notification(
+        admin_site, user_ids, title, message, notification_type,
+        html_message=html_message
+    )
+
+    return jsonify({'message': 'Broadcast dispatched', 'results': results}), 200
 

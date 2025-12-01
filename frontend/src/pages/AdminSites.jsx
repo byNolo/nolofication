@@ -220,19 +220,19 @@ export default function AdminSites() {
       </div>
 
       {error && (
-        <Card className="mb-4 bg-red-50">
+        <Card className="mb-4 bg-red-50 p-6">
           <p className="text-red-600">Error: {error}</p>
         </Card>
       )}
 
       <div className="space-y-4">
         {sites.map((site) => (
-          <Card key={site.id}>
-            <div className="flex justify-between items-start">
+          <Card key={site.id} className="p-6">
+            <div className="flex justify-between items-start gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-xl font-bold">{site.name}</h3>
-                  <code className="text-sm bg-gray-100 px-2 py-1 rounded">{site.site_id}</code>
+                  <code className="text-sm bg-gray-100 text-gray-900 px-2 py-1 rounded">{site.site_id}</code>
                   {site.is_active ? (
                     <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Active</span>
                   ) : (
@@ -248,17 +248,19 @@ export default function AdminSites() {
                 )}
                 
                 <div className="text-sm text-gray-500 space-y-1">
-                  <p>Creator: KeyN ID {site.creator_keyn_id}</p>
-                  <p>Created: {new Date(site.created_at).toLocaleDateString()}</p>
-                  <p>Notifications: {site.notification_count} | Categories: {site.category_count}</p>
+                  <p>Creator KeyN ID: {site.creator_keyn_id || 'N/A'}</p>
+                  <p>Created: {site.created_at ? new Date(site.created_at).toLocaleDateString() : 'N/A'}</p>
+                  <p>Notifications: {site.notification_count ?? 0} | Categories: {site.category_count ?? 0}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <p className="font-mono text-xs">API Key: {site.api_key.substring(0, 20)}...</p>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(site.api_key)}
-                      className="text-blue-600 hover:text-blue-800 text-xs"
-                    >
-                      Copy
-                    </button>
+                    <p className="font-mono text-xs">API Key: {site.api_key ? `${site.api_key.substring(0, 20)}...` : 'N/A'}</p>
+                    {site.api_key && (
+                      <button
+                        onClick={() => navigator.clipboard.writeText(site.api_key)}
+                        className="text-blue-600 hover:text-blue-800 text-xs"
+                      >
+                        Copy
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

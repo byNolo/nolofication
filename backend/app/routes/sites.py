@@ -67,23 +67,27 @@ def register_site():
 
 @bp.route('/sites', methods=['GET'])
 @require_admin_auth
-def list_sites():
+def list_sites(user):
     """List all registered sites (admin only)."""
-    sites = Site.query.all()
-    
-    return jsonify({
-        'total': len(sites),
-        'sites': [{
-            'id': site.id,
-            'site_id': site.site_id,
-            'name': site.name,
-            'description': site.description,
-            'is_active': site.is_active,
-            'is_approved': site.is_approved,
-            'creator_keyn_id': site.creator_keyn_id,
-            'created_at': site.created_at.isoformat()
-        } for site in sites]
-    }), 200
+    try:
+        sites = Site.query.all()
+
+        return jsonify({
+            'total': len(sites),
+            'sites': [{
+                'id': site.id,
+                'site_id': site.site_id,
+                'name': site.name,
+                'description': site.description,
+                'is_active': site.is_active,
+                'is_approved': site.is_approved,
+                'creator_keyn_id': site.creator_keyn_id,
+                'created_at': site.created_at.isoformat() if site.created_at else None
+            } for site in sites]
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error listing sites: {e}")
+        return jsonify({'error': 'Internal server error listing sites'}), 500
 
 
 @bp.route('/sites/<site_id>', methods=['GET'])

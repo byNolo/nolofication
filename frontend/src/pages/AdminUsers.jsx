@@ -45,8 +45,8 @@ export default function AdminUsers() {
   if (!isAdmin) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <Card>
-          <div className="text-center py-12">
+        <Card className="p-6">
+          <div className="text-center py-6">
             <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
           </div>
         </Card>
@@ -67,7 +67,7 @@ export default function AdminUsers() {
         </div>
       ) : (
         <>
-          <Card>
+          <Card className="p-6">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -83,7 +83,7 @@ export default function AdminUsers() {
                     <tr key={u.id} className="border-b last:border-0 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{u.username}</td>
                       <td className="py-3 px-4">
-                        <code className="text-sm bg-gray-100 px-2 py-1 rounded">{u.keyn_id}</code>
+                        <code className="text-sm bg-gray-100 text-gray-900 px-2 py-1 rounded">{u.keyn_user_id}</code>
                       </td>
                       <td className="py-3 px-4 text-gray-600">{u.email || 'N/A'}</td>
                       <td className="py-3 px-4 text-gray-600">

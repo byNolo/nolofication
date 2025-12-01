@@ -14,6 +14,17 @@ export default function AdminNotifications() {
 
   const isAdmin = user?.keyn_user_id === '1' && user?.username?.toLowerCase() === 'sam'
 
+  const formatDateToLocal = (iso) => {
+    if (!iso) return 'N/A'
+    // Treat naive ISO strings (no timezone) as UTC by appending 'Z' when needed
+    let s = iso
+    if (!/[zZ]|[+\-]\d{2}:?\d{2}$/.test(iso)) {
+      s = iso + 'Z'
+    }
+    const d = new Date(s)
+    if (isNaN(d.getTime())) return iso
+    return d.toLocaleString()
+  }
   useEffect(() => {
     if (isAdmin) {
       fetchNotifications()
@@ -46,8 +57,8 @@ export default function AdminNotifications() {
   if (!isAdmin) {
     return (
       <div className="max-w-4xl mx-auto p-6">
-        <Card>
-          <div className="text-center py-12">
+        <Card className="p-6">
+          <div className="text-center py-6">
             <h2 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h2>
           </div>
         </Card>
@@ -70,44 +81,33 @@ export default function AdminNotifications() {
         <>
           <div className="space-y-4">
             {notifications.map((notification) => (
-              <Card key={notification.id}>
-                <div className="flex justify-between items-start">
+              <Card key={notification.id} className="p-6">
+                <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="font-bold text-lg">{notification.title}</h3>
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                        {notification.site_id}
-                      </code>
+                      <code className="text-xs bg-gray-100 text-gray-900 px-2 py-1 rounded">{notification.site_name || notification.site_id}</code>
                     </div>
                     <p className="text-gray-700 mb-2">{notification.message}</p>
                     <div className="text-sm text-gray-600 space-y-1">
-                      <p>To: {notification.username} (KeyN ID: {notification.keyn_user_id})</p>
-                      <p>Created: {new Date(notification.created_at).toLocaleString()}</p>
-                      {notification.category_key && (
-                        <p>Category: {notification.category_key}</p>
+                      <p>Created: {formatDateToLocal(notification.created_at)}</p>
+                      {notification.category && (
+                        <p>Category: {notification.category}</p>
                       )}
                     </div>
                   </div>
                   <div className="flex flex-col gap-1 ml-4">
-                    {notification.sent_via_email && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        Email
-                      </span>
+                    {notification.channels?.email && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Email</span>
                     )}
-                    {notification.sent_via_web_push && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                        Push
-                      </span>
+                    {notification.channels?.web_push && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Push</span>
                     )}
-                    {notification.sent_via_discord && (
-                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                        Discord
-                      </span>
+                    {notification.channels?.discord && (
+                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Discord</span>
                     )}
-                    {notification.sent_via_webhook && (
-                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                        Webhook
-                      </span>
+                    {notification.channels?.webhook && (
+                      <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Webhook</span>
                     )}
                   </div>
                 </div>
