@@ -99,6 +99,7 @@ def create_site(user):
         site_id=data['site_id'],
         name=data['name'],
         description=data.get('description', ''),
+        api_key=Site.generate_api_key(),  # Generate API key
         creator_keyn_id=user.keyn_user_id,  # Admin is the creator
         is_approved=True,  # Auto-approve admin-created sites
         is_active=True
